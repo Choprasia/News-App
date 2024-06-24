@@ -1,5 +1,7 @@
 package com.example.basiscodelab
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -38,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +57,10 @@ import com.example.basiscodelab.repository.NewsResult
 import com.example.basiscodelab.ui.theme.BasisCodelabTheme
 import com.example.basiscodelab.vm.NewsViewModel
 import com.example.basiscodelab.vm.NewsViewModelFactory
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 
 class MainActivity : ComponentActivity() {
@@ -162,7 +169,6 @@ class MainActivity : ComponentActivity() {
         articleState?.let { article ->
 
             Column(
-                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                TopAppBar(
@@ -179,7 +185,7 @@ class MainActivity : ComponentActivity() {
                         painter = rememberImagePainter(data = it),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(128.dp)
+                            .size(256.dp)
                             .padding(8.dp)
                     )
                 }
@@ -189,7 +195,7 @@ class MainActivity : ComponentActivity() {
                         fontWeight = FontWeight.Bold)
                 )
                         Spacer(modifier = Modifier.height(8.dp))
-                Text(text = article.publishedAt,
+                Text(text = "Published at: ${article.publishedAt}",
                     style=MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.Bold
                     ))
@@ -203,6 +209,16 @@ class MainActivity : ComponentActivity() {
                     style = MaterialTheme.typography.bodyMedium
                     )
                 Spacer(modifier = Modifier.height(8.dp))
+                article.url?.let{
+                    Text(
+                        text=it,
+                        style=MaterialTheme.typography.bodyMedium,
+                        modifier=Modifier.clickable {
+                           val intent =Intent(Intent.ACTION_VIEW, Uri.parse(it))
+                            startActivity(intent,null)
+                        }
+                    )
+                }
 
             }
         } ?: run {
@@ -238,7 +254,7 @@ class MainActivity : ComponentActivity() {
         modifier: Modifier = Modifier,
     ) {
         Column {
-
+            Spacer(modifier = Modifier.height(18.dp))
             Text(
 
                 text = "NEWS HEADLINES",
@@ -272,6 +288,13 @@ class MainActivity : ComponentActivity() {
         modifier: Modifier = Modifier
     ) {
         var expanded by rememberSaveable { mutableStateOf(false) }
+        val formattedPublishedAt=try{
+            val parsedDate= LocalDateTime.parse(publisedAt, DateTimeFormatter.ISO_DATE_TIME)
+            parsedDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(Locale.getDefault()))
+        }
+        catch(e:Exception){
+            publisedAt
+        }
         Surface(
             color = MaterialTheme.colorScheme.primary,
             modifier = modifier.padding(vertical = 4.dp, horizontal = 8.dp)
@@ -282,27 +305,29 @@ class MainActivity : ComponentActivity() {
                         painter = rememberImagePainter(data = it),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(128.dp)
                             .padding(end = 8.dp)
                     )
                 }
 
                 Column(
                     modifier = modifier
-                        .weight(3f)
+                        .weight(1f)
                         .padding(12.dp)
                 ) {
 
-                    Text(text = publisedAt)
+
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp
+                            fontSize = 16.sp
 
                         )
                     )
+                    Text(text = publisedAt,
+                        )
                 }
 
             }
