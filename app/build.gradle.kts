@@ -10,7 +10,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.basiscodelab"
+        applicationId = "com.newsapp.basiscodelab"
         minSdk = 27
         targetSdk = 34
         compileSdk=34
@@ -20,6 +20,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+            externalNativeBuild{
+                cmake{
+                    cppFlags += "-std=c++17"
+                }
+
+            }
+        }
+        ndk{
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -37,6 +46,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+    externalNativeBuild{
+        cmake{
+            path = file("src/main/cpp/CMakeLists.txt")
+            version="3.22.1"
+        }
+    }
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
@@ -51,6 +67,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    ndkVersion = "26.1.10909125"
 }
 
 dependencies {
@@ -91,6 +108,7 @@ dependencies {
     //navigation
     val nav_version="2.7.0"
     implementation("androidx.navigation:navigation-compose:$nav_version")
+
 
 
 //Tests

@@ -37,27 +37,34 @@ class NewsViewModel constructor(val repository: NewsRepository) : ViewModel() {
             repository.getHeadlines(country, page)
 
         }
-
-
-        //  _newsData.value = response.articles ?: emptyList()
     }
-
     fun getSingleArticle(title: String) {
         viewModelScope.launch {
-            when (val articleResult = repository.getArticleByTitle(title)) {
-                is NewsResult.Success -> {
-                    _singleArticle.value = articleResult.data
+            try {
+                when (val articleResult = repository.getArticleByTitle(title)) {
+                    is NewsResult.Success -> {
+                        val newArticle = articleResult.data
+
+                        if (_singleArticle.value != newArticle) {
+                            _singleArticle.value = newArticle
+                            Log.i("BasisCodelab", "Single article fetched successfully")
+                        }
+
+                    }
+
+                    is NewsResult.Error -> {
+                        Log.e("BasisCodelab", "Error in fetching single article")
+                    }
+
+                    NewsResult.Loading -> {
+                        Log.d("BasisCodelab", "Loading in fetching single article")
+                    }
                 }
 
-                is NewsResult.Error -> {
-                    Log.e("BasisCodelab", "Error in fetching single article")
-                }
-
-                NewsResult.Loading -> {
-                    Log.d("BasisCodelab", "Loading in fetching single article")
-                }
+            } catch (e: Exception) {
+                Log.e("BasisCodelab", "Error in fetching single article:${e.message}")
             }
-            _singleArticle.value
+
         }
-    }
-}
+    }}
+

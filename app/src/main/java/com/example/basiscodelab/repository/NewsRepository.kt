@@ -57,8 +57,6 @@ class NewsRepository(private val db: ArticleDatabase) {
 
         }
     }
-
-
     suspend fun searchNews(searchQuery: String, page: Int) =
         NewsService.newsInstance.searchNews(searchQuery, page)
 
@@ -74,8 +72,6 @@ class NewsRepository(private val db: ArticleDatabase) {
             NewsResult.Success(article)
         } ?: NewsResult.Error("Article not found")
     }
-
-
     suspend fun deleteArticle(article: Article) =
         db.getArticleDAO().deleteArticle(article)
 }
