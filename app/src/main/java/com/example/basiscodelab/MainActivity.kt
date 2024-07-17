@@ -1,6 +1,5 @@
 package com.example.basiscodelab
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -54,8 +53,6 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.example.basiscodelab.data.Article
 import com.example.basiscodelab.db.ArticleDatabase
-import com.example.basiscodelab.phi.GenAIException
-import com.example.basiscodelab.phi.GenAIWrapper
 import com.example.basiscodelab.repository.NewsRepository
 import com.example.basiscodelab.repository.NewsResult
 import com.example.basiscodelab.ui.theme.BasisCodelabTheme
@@ -63,59 +60,48 @@ import com.example.basiscodelab.vm.NewsViewModel
 import com.example.basiscodelab.vm.NewsViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 
-class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
+class MainActivity : ComponentActivity() {
 
     private lateinit var newsViewModel: NewsViewModel
-    private var genAIWrapper: GenAIWrapper? = null
 
     companion object {
-        private const val TAG = "basiscodelab.MainActivity"
-        private fun fileExists(context: Context, fileName: String): Boolean {
-            val file = File(context.filesDir, fileName)
-            return file.exists()
-        }
+        const val TAG = "basiscodelab.MainActivity"
     }
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val db = ArticleDatabase(this)
         val repository = NewsRepository(db)
-        val newsViewModelFactory = NewsViewModelFactory(repository)
+        val newsViewModelFactory = NewsViewModelFactory(this, repository)
         newsViewModel = ViewModelProvider(this, newsViewModelFactory).get(NewsViewModel::class.java)
         Log.d("BasisCodelab", "onCreate")
         enableEdgeToEdge()
         setContent {
+
             BasisCodelabTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     MyApp(modifier = Modifier.fillMaxSize())
                 }
-                LaunchedEffect(Unit) {
-                    try {
-                        downloadModels(applicationContext)
-                    } catch (e: GenAIException) {
-                        throw RuntimeException(e)
-                    }
-                }
             }
-
         }
     }
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @Composable
     fun MyApp(
         modifier: Modifier = Modifier
     ) {
         var fetchedNewsState: List<Article> by rememberSaveable { mutableStateOf(emptyList()) }
+
         Surface(modifier) {
             if (fetchedNewsState.isEmpty()) {
                 OnboardingScreen(onContinueClicked = {
@@ -126,117 +112,62 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
                 })
             } else {
                 Nav(fetchedNewsState)
+
             }
+
         }
     }
-    override fun onDestroy() {
-        try {
-            genAIWrapper?.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "exception from closing genAIWrapper", e)
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun SummarizeViewScreen(navController: NavController, viewModel: NewsViewModel,articles: List<Article>) {
+        val summarizedArticle by viewModel.summarizedArticle.observeAsState()
+        Log.d("BasisCodelab", "SummarizeViewScreen: $summarizedArticle")
+
+
+        LaunchedEffect(Unit) {
+            viewModel.triggersummaryofarticles(articles)
+            Log.d("BasisCodelab", "triggersummaryofarticles: $articles")
         }
-        genAIWrapper = null
-        super.onDestroy()
-    }
-    @Throws(GenAIException::class)
-    private fun downloadModels(context: Context) {
-        val urlFilePairs = listOf(
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/added_tokens.json?download=true",
-                "added_tokens.json"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/config.json?download=true",
-                "config.json"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/configuration_phi3.py?download=true",
-                "configuration_phi3.py"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/genai_config.json?download=true",
-                "genai_config.json"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx?download=true",
-                "phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx.data?download=true",
-                "phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx.data"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/special_tokens_map.json?download=true",
-                "special_tokens_map.json"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/tokenizer.json?download=true",
-                "tokenizer.json"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/tokenizer.model?download=true",
-                "tokenizer.model"
-            ),
-            Pair(
-                "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/tokenizer_config.json?download=true",
-                "tokenizer_config.json"
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TopAppBar(title = { Text(text = "Back") }, navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+
+                }
+            }, modifier = Modifier.fillMaxWidth()
             )
-        )
-        Toast.makeText(
-            this,
-            "Downloading model for the app... Model Size greater than 2GB, please allow a few minutes to download.",
-            Toast.LENGTH_SHORT
-        ).show() // val executor: ExecutorService = Executors.newSingleThreadExecutor()
-        for (i in urlFilePairs.indices) {
-            val index = i
-            val (url, fileName) = urlFilePairs[index]
-            if (fileExists(context, fileName)) {
-                // Display a message using Toast
-                Toast.makeText(this, "File already exists. Skipping Download.", Toast.LENGTH_SHORT)
-                    .show()
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.CenterHorizontally)
+            ) {
+                Text(
 
-                Log.d(TAG, "File $fileName already exists. Skipping download.")
-                genAIWrapper = createGenAIWrapper()
-                break
+                    text = "Summary of the day", style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.ExtraBold
+                    ))
+                Spacer(modifier = Modifier.height(16.dp))
+                if (summarizedArticle != null) {
+                    Text(
+                        text = summarizedArticle!!,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Text(
+                        text = "Summarizing...",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
-        }
-    }
-    @Throws(GenAIException::class)
-    private fun createGenAIWrapper(): GenAIWrapper {
-        val wrapper = GenAIWrapper(filesDir.path)
-        wrapper.setTokenUpdateListener(this)
-        return wrapper
-    }
-    override fun onTokenUpdate(token: String) {
-        Log.d(TAG, "Received token update: $token")
-    }
-    fun categorizeAndSummarizeNews(newsText: String) {
-        genAIWrapper?.let { wrapper ->
-            val prompt = "Categorize the following news article and provide a summary:\n\n" +
-                    "News Article:\n$newsText\n\n" +
-                    "Categories:\n" +
-                    "1. Politics\n" +
-                    "2. Technology\n" +
-                    "3. Business\n" +
-                    "4. Sports\n" +
-                    "5. Health\n\n" +
-                    "6. Others\n\n" +
-                    "Summarize the main points in a sentences:".trimIndent()
 
-            wrapper.run(prompt)
-            Log.d(TAG, "Prompt sent to GenAIWrapper: $prompt")
         }
     }
-    fun articleSummarization(article: Article) {
-        article.description?.let { description ->
-            Log.i(TAG, "This is the description: $description")
-            genAIWrapper?.let {
-                Log.i(TAG, "GenAIWrapper is not null")
-                categorizeAndSummarizeNews(description)
-                Log.i(TAG, "GenAIWrapper called")
-            }
-        }
-    }
+
+
     private fun fetchNewsData(fetchedNews: (List<Article>) -> Unit) {
         newsViewModel.getNews("in", 1)
         newsViewModel.newsData.observe(this) {
@@ -257,50 +188,55 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
 
         }
     }
+
     @Composable
-    fun Nav(list: List<Article>) {
+    fun Nav(list: List<Article>, viewModel: NewsViewModel = newsViewModel) {
         val navController = rememberNavController()
         NavHost(navController = navController, startDestination = "newslist") {
             composable(route = "newslist") {
+                // val newsData=viewModel.newsData.value
+                //  val articles=if(newsData is NewsResult.Success)newsData.data else emptyList()
 
-                NewsList(list = list,
-                    onClick = { article ->
-                        navController.navigate("articleview/${article.title}")
-                    },
-                    onSummarizeClick = {
-                        navController.navigate("summarizeView")
-                    })
+                NewsList(list = list, onClick = { article ->
+                    navController.navigate("articleview/${article.title}")
+                }, onSummarizeClick = {
+                    // viewModel.summarizeArticles(articles)
+                    navController.navigate("summarizeView")
+                })
             }
 
             composable(route = "articleview/{articleTitle}") { backStackEntry ->
                 val articleTitle = backStackEntry.arguments?.getString("articleTitle")
-
-
                 ArticleDetailedView(
                     navController = navController,
                     articleTitle = articleTitle,
-                    newsViewModel = newsViewModel
-                )
+
+                    )
+            }
+            composable(route = "summarizeView") {
+                SummarizeViewScreen(navController, viewModel,articles = list)
             }
         }
     }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ArticleDetailedView(
         modifier: Modifier = Modifier,
         navController: NavController,
         articleTitle: String?,
-        newsViewModel: NewsViewModel
 
-    ) {
+        ) {
         val articleState by newsViewModel.singleArticle.observeAsState()
-        if (articleState == null)
+        LaunchedEffect(Unit) {
             newsViewModel.getSingleArticle(articleTitle ?: "")
+        }
+
         LaunchedEffect(articleState) {
             Log.i("BasisCodelab", "Article state updated: $articleState")
             if (articleState != null) {
                 withContext(Dispatchers.IO) {
-                    articleSummarization(articleState!!)
+                    //  articleSummarization(articleState!!)
 
                     Log.i("BasisCodelab", "Article processed:${articleState?.title}")
                 }
@@ -310,15 +246,12 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                TopAppBar(
-                    title = { Text(text = "Back") },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                TopAppBar(title = { Text(text = "Back") }, navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
 
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    }
+                }, modifier = Modifier.fillMaxWidth()
                 )
                 article.urlToImage?.let {
                     Image(
@@ -330,8 +263,7 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
                     )
                 }
                 Text(
-                    text = article.title,
-                    style = MaterialTheme.typography.headlineSmall.copy(
+                    text = article.title, style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -352,14 +284,14 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
                         modifier = Modifier.clickable {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
                             startActivity(intent, null)
-                        }
-                    )
+                        })
                 }
             }
         } ?: run {
             Text(text = "Loading")
         }
     }
+
     @Composable
     fun OnboardingScreen(
         onContinueClicked: () -> Unit,
@@ -372,44 +304,40 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
         ) {
             Text("Welcome to Daily News!")
             Button(
-                modifier = Modifier.padding(vertical = 24.dp),
-                onClick = onContinueClicked
+                modifier = Modifier.padding(vertical = 24.dp), onClick = onContinueClicked
             ) {
                 Text("Continue")
             }
         }
     }
+
     @Composable
-     fun NewsList(
+    fun NewsList(
         list: List<Article>,
         onClick: (Article) -> Unit,
-        onSummarizeClick:()-> Unit,
+        onSummarizeClick: () -> Unit,
         modifier: Modifier = Modifier,
 
-    ) {
+        ) {
         Column {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
 
-                text = "NEWS HEADLINES",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.ExtraBold),
-                modifier=Modifier.padding(horizontal = 12.dp,vertical=8.dp)
+                text = "NEWS HEADLINES", style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.ExtraBold
+                ), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             )
-                Row(
-                    modifier=Modifier
-                     //   .fillMaxWidth()
-                        .padding(horizontal=12.dp,vertical = 4.dp),
-                    //horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.Bottom
-                ){
-                    Button(
-                        onClick= { onSummarizeClick() },
-                        modifier = Modifier.padding(8.dp)
-                    ){
-                        Text("Summarize")
-                    }
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Button(
+                    onClick = { onSummarizeClick() },
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Text("Summarize")
                 }
+            }
             LazyColumn(modifier = modifier.padding(vertical = 4.dp)) {
                 items(items = list) { article ->
                     ArticleView(article.title,
@@ -421,12 +349,14 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
             }
         }
     }
+
     fun convertTimestampToDate(publisedAt: String): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
         val date = sdf.parse(publisedAt)
         val outputsdf = SimpleDateFormat("EEEE MMMM dd,yyyy", Locale.getDefault())
         return outputsdf.format(date)
     }
+
     fun getDaysDifference(publisedAt: String): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
         val date = sdf.parse(publisedAt)
@@ -441,6 +371,7 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
             }
         }
     }
+
     @Composable
     private fun ArticleView(
 
@@ -469,10 +400,8 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 16.sp
+                        text = title, style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold, fontSize = 16.sp
 
                         )
                     )
@@ -504,8 +433,7 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
                     Image(
                         painter = rememberImagePainter(data = it),
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(128.dp)
+                        modifier = Modifier.size(128.dp)
                     )
                 }
 
@@ -513,6 +441,8 @@ class MainActivity : ComponentActivity(), GenAIWrapper.TokenUpdateListener {
         }
     }
 }
+
+
 
 
 

@@ -4,11 +4,13 @@ import android.util.Log
 class GenAIWrapper(modelPath: String) : AutoCloseable {
     // Load the GenAI library on application startup.
     companion object {
+
         init {
             System.loadLibrary("genai") // JNI layer
             System.loadLibrary("onnxruntime-genai")
             System.loadLibrary("onnxruntime")
         }
+
     }
 
     private var nativeModel: Long = 0
@@ -33,7 +35,9 @@ class GenAIWrapper(modelPath: String) : AutoCloseable {
     }
 
     fun run(prompt: String) {
-        run(nativeModel, nativeTokenizer, prompt, true)
+
+         run(nativeModel, nativeTokenizer, prompt, true)
+
     }
 
     override fun close() {
@@ -48,7 +52,6 @@ class GenAIWrapper(modelPath: String) : AutoCloseable {
         nativeTokenizer = 0
         nativeModel = 0
     }
-
     fun gotNextToken(token: String) {
         Log.i("GenAI", "gotNextToken: $token")
         listener?.onTokenUpdate(token)

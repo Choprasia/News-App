@@ -1,6 +1,7 @@
 package com.example.basiscodelab.repository
 
 import android.util.Log
+import androidx.lifecycle.LiveData
 import com.example.basiscodelab.data.Article
 import com.example.basiscodelab.data.News
 import com.example.basiscodelab.network.NewsService
@@ -20,7 +21,7 @@ class NewsRepository(private val db: ArticleDatabase) {
         _newsResp.emit(NewsResult.Loading)
         withContext(Dispatchers.IO) {
 
-            val cachedArticles = db.getArticleDAO().getAllArticles()
+            val cachedArticles = db.getArticleDAO().getAllArticles().value
             if (!cachedArticles.isNullOrEmpty()) {
                 _newsResp.emit(NewsResult.Success(cachedArticles))
             }
@@ -64,7 +65,8 @@ class NewsRepository(private val db: ArticleDatabase) {
 
     fun getFavoriteNews() = db.getArticleDAO().getAllArticles()
 
-    fun getAllArticles() = db.getArticleDAO().getAllArticles()
+    fun getAllArticles()= db.getArticleDAO().getAllArticles()
+
 
     suspend fun getArticleByTitle(title: String) : NewsResult<Article> {
         val article = db.getArticleDAO().getArticleByTitle(title)

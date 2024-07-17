@@ -1,5 +1,6 @@
 package com.example.basiscodelab.db
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -18,7 +19,7 @@ interface ArticleDAO {
     suspend fun upsert(article: Article):Long
 
     @Query("SELECT * FROM articles")
-    fun getAllArticles(): List<Article>
+    fun getAllArticles(): LiveData<List<Article>>
 
     @Query("SELECT * FROM articles WHERE title=:title")
      suspend fun getArticleByTitle(title:String): Article?
