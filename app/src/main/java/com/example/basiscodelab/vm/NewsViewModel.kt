@@ -51,18 +51,15 @@ class NewsViewModel constructor(val repository: NewsRepository, context: Context
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 genAIWrapper?.let { wrapper ->
-                    val titles= articles.take(1).joinToString("\n") { article ->
+                    val titles= articles.joinToString("\n") { article ->
                         " - ${article.title}"
                     }
-                  /*  val descriptions = articles.take(1).joinToString("\n") { article ->
-                        " - ${article.description}"
 
-                    }*/
-                    val prompt = """
-               Categorize the following news article titles and provide a summary for that category.: 
-               Summarize the main points for that category in a sentences:
-                   ``` News Article Descriptions:$titles```
-                    """.trimIndent()
+                    val prompt = """Provide the category for each title .Categories: Business, Entertainment, General, Health, Science, Sports, Technology,Other.
+                        For each category, summarize the articles in detail that fall under it on the basis of article titles. 
+                       ```Article Titles:${titles}```
+                       
+                   """.trimMargin()
 
 
                     Log.d(TAG, "Prompt length:${prompt.length}")
@@ -84,7 +81,7 @@ class NewsViewModel constructor(val repository: NewsRepository, context: Context
 
     override fun onTokenUpdate(token: String) {
         Log.d(MainActivity.TAG, "Received token update: $token")
-        val currentsummary = _summarizedArticle.value ?: ""
+       val currentsummary = _summarizedArticle.value ?: ""
         val updatedSummary = currentsummary + token
          _summarizedArticle.postValue(updatedSummary)
 

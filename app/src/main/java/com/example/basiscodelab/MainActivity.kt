@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -42,7 +44,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
@@ -50,6 +54,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
 import com.example.basiscodelab.data.Article
 import com.example.basiscodelab.db.ArticleDatabase
@@ -60,6 +65,7 @@ import com.example.basiscodelab.vm.NewsViewModel
 import com.example.basiscodelab.vm.NewsViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.internal.wait
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -120,50 +126,66 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun SummarizeViewScreen(navController: NavController, viewModel: NewsViewModel,articles: List<Article>) {
+    fun SummarizeViewScreen(
+        navController: NavController,
+        viewModel: NewsViewModel,
+        articles: List<Article>
+    ) {
         val summarizedArticle by viewModel.summarizedArticle.observeAsState()
         Log.d("BasisCodelab", "SummarizeViewScreen: $summarizedArticle")
 
 
         LaunchedEffect(Unit) {
             viewModel.triggersummaryofarticles(articles)
-            Log.d("BasisCodelab", "triggersummaryofarticles: $articles")
+            Log.d("BasisCodelab", "triggering summary of articles")
         }
 
-        Column(
+        LazyColumn(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            TopAppBar(title = { Text(text = "Back") }, navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            item {
+                TopAppBar(
+                    title = { Text(text = "") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "")
 
-                }
-            }, modifier = Modifier.fillMaxWidth()
-            )
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .align(Alignment.CenterHorizontally)
-            ) {
-                Text(
+                        }
+                    }
 
-                    text = "Summary of the day", style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ))
-                Spacer(modifier = Modifier.height(16.dp))
-                if (summarizedArticle != null) {
-                    Text(
-                        text = summarizedArticle!!,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    Text(
-                        text = "Summarizing...",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                )
             }
+            item {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
 
+                ) {
+                    Text(
+
+                        text = "Summary of the day",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier=Modifier.padding(16.dp)
+                    ){
+                    if (summarizedArticle != null) {
+                        Text(
+                            text = summarizedArticle!!,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        Text(
+                            text = "Summarizing...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+            }}
         }
     }
 
@@ -194,14 +216,11 @@ class MainActivity : ComponentActivity() {
         val navController = rememberNavController()
         NavHost(navController = navController, startDestination = "newslist") {
             composable(route = "newslist") {
-                // val newsData=viewModel.newsData.value
-                //  val articles=if(newsData is NewsResult.Success)newsData.data else emptyList()
 
                 NewsList(list = list, onClick = { article ->
                     navController.navigate("articleview/${article.title}")
                 }, onSummarizeClick = {
-                    // viewModel.summarizeArticles(articles)
-                    navController.navigate("summarizeView")
+                    navController.navigate("summarizeViewScreen")
                 })
             }
 
@@ -213,8 +232,8 @@ class MainActivity : ComponentActivity() {
 
                     )
             }
-            composable(route = "summarizeView") {
-                SummarizeViewScreen(navController, viewModel,articles = list)
+            composable(route = "summarizeViewScreen") {
+                SummarizeViewScreen(navController, viewModel, articles = list)
             }
         }
     }
@@ -236,55 +255,81 @@ class MainActivity : ComponentActivity() {
             Log.i("BasisCodelab", "Article state updated: $articleState")
             if (articleState != null) {
                 withContext(Dispatchers.IO) {
-                    //  articleSummarization(articleState!!)
-
                     Log.i("BasisCodelab", "Article processed:${articleState?.title}")
                 }
             }
         }
         articleState?.let { article ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+            LazyColumn(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                TopAppBar(title = { Text(text = "Back") }, navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                item {
+                    TopAppBar(
+                        title = { Text(text = "") }, navigationIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "")
 
+                            }
+                        }, modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    article.urlToImage?.let {
+                        Log.d("DBG", "Image URL: $it")
+                        Image(
+                            painter = rememberImagePainter(data = it),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .size(200.dp)
+                                .padding(8.dp)
+                        )
                     }
-                }, modifier = Modifier.fillMaxWidth()
-                )
-                article.urlToImage?.let {
-                    Image(
-                        painter = rememberImagePainter(data = it),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(256.dp)
-                            .padding(8.dp)
-                    )
-                }
-                Text(
-                    text = article.title, style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = article.description ?: "",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-
-                    )
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                article.url?.let {
                     Text(
+                        text = article.title, style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .fillMaxWidth()
+                    )
 
-                        text = "URL:$it ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
-                            startActivity(intent, null)
-                        })
+
+                    Text(
+                        text = article.description ?: "",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .fillMaxWidth()
+                    )
+                    Log.d("DBG", "Article content: ${article.description}")
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    article.url?.let {
+                        Text(
+
+                            text = "Read More: ",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                            Text(
+                                text = "$it",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier
+                                    .padding(vertical = 8.dp)
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
+                                        startActivity(intent, null)
+                                    }
+                        )
+                    }
                 }
             }
         } ?: run {
@@ -320,15 +365,15 @@ class MainActivity : ComponentActivity() {
 
         ) {
         Column {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(26.dp))
             Text(
 
-                text = "NEWS HEADLINES", style = MaterialTheme.typography.headlineLarge.copy(
+                text = "NEWS HEADLINES", style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.ExtraBold
-                ), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ), modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
             )
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
                 Button(
@@ -384,57 +429,53 @@ class MainActivity : ComponentActivity() {
         var expanded by rememberSaveable { mutableStateOf(false) }
         Surface(
             color = MaterialTheme.colorScheme.primary,
-            modifier = modifier.padding(vertical = 4.dp, horizontal = 8.dp)
+            modifier = modifier.padding(vertical = 2.dp, horizontal = 4.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                //modifier = Modifier.padding(16.dp)
             ) {
-                Column(
-                    modifier = modifier
-                        .weight(1f)
-                        .padding(12.dp)
+                Row(
+                    modifier = Modifier.padding(15.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Column(
+                        modifier = modifier
+                            .weight(0.7f)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = title, style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.ExtraBold, fontSize = 16.sp
 
+                            ),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = convertTimestampToDate(publisedAt),
+                            style = MaterialTheme.typography.bodySmall
+                        )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = title, style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold, fontSize = 16.sp
+                        Text(
+                            text = getDaysDifference(publisedAt),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (imageUrl != null) {
+
+                        Image(
+                            painter = rememberAsyncImagePainter(model = imageUrl),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(150.dp)
+
 
                         )
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = convertTimestampToDate(publisedAt),
-                                style = MaterialTheme.typography.bodySmall.copy(
-
-                                )
-                            )
-
-                            Text(
-                                text = getDaysDifference(publisedAt),
-                                style = MaterialTheme.typography.bodySmall.copy(
-
-                                )
-                            )
-                        }
-
                     }
 
-                }
-                imageUrl?.let {
-                    Image(
-                        painter = rememberImagePainter(data = it),
-                        contentDescription = null,
-                        modifier = Modifier.size(128.dp)
-                    )
                 }
 
             }
