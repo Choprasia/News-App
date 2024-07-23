@@ -108,7 +108,7 @@ Java_com_example_basiscodelab_phi_GenAIWrapper_run(JNIEnv *env, jobject thiz, jl
     check_result(OgaCreateGeneratorParams(model, &generator_params));
     GeneratorParamsPtr gp_cleanup{generator_params, OgaDestroyGeneratorParams};
 
-    check_result(OgaGeneratorParamsSetSearchNumber(generator_params, "max_length", 2000));
+    check_result(OgaGeneratorParamsSetSearchNumber(generator_params, "max_length", 500));
     check_result(OgaGeneratorParamsSetInputSequences(generator_params, sequences));
 
     __android_log_print(ANDROID_LOG_DEBUG, "native", "starting token generation");
@@ -170,7 +170,7 @@ Java_com_example_basiscodelab_phi_GenAIWrapper_run(JNIEnv *env, jobject thiz, jl
             //   or when the OgaTokenizerStream is destroyed`
             // OgaDestroyString(token); This causes 'Scudo ERROR: misaligned pointer when deallocating address'
         }
-        do_callback("END");
+
 
         // decode overall
         const int32_t* tokens = OgaGenerator_GetSequenceData(generator, 0);

@@ -23,6 +23,7 @@ import java.io.File
 class NewsViewModel constructor(val repository: NewsRepository, context: Context) : ViewModel(),
     GenAIWrapper.TokenUpdateListener {
 
+        private var totalTokenCount=0
 
     private val _newsData: MutableLiveData<NewsResult<List<Article>>> =
         MutableLiveData(NewsResult.Loading)
@@ -51,17 +52,17 @@ class NewsViewModel constructor(val repository: NewsRepository, context: Context
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 genAIWrapper?.let { wrapper ->
-                    val titles= articles.joinToString("\n") { article ->
+                    val titles= articles.take(10).joinToString("\n") { article ->
                         " - ${article.title}"
                     }
 
-                    val prompt = """Provide the category for each title .Categories: Business, Entertainment, General, Health, Science, Sports, Technology,Other.
-                        For each category, summarize the articles in detail that fall under it on the basis of article titles. 
-                       ```Article Titles:${titles}```
-                       
-                   """.trimMargin()
-
-
+                    val prompt = """You are a news paper editor, you will be given article titles, please read the content of titles, and group them into following categories : "Tech, Sports, politics, Others".
+                        Here are the article titles:
+                        $titles
+                        Output format:
+                        ``` <Category 1> : <Article Title 1>, <Article Title 2>...
+                            <Summary> : <``` 
+                        """
                     Log.d(TAG, "Prompt length:${prompt.length}")
 
                     wrapper.run(prompt)
@@ -81,9 +82,11 @@ class NewsViewModel constructor(val repository: NewsRepository, context: Context
 
     override fun onTokenUpdate(token: String) {
         Log.d(MainActivity.TAG, "Received token update: $token")
-       val currentsummary = _summarizedArticle.value ?: ""
+        val currentsummary = _summarizedArticle.value ?: ""
         val updatedSummary = currentsummary + token
          _summarizedArticle.postValue(updatedSummary)
+        totalTokenCount+=1
+        Log.d(MainActivity.TAG, "Total token count: $totalTokenCount")
 
     }
 

@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,6 +59,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
 import com.example.basiscodelab.data.Article
 import com.example.basiscodelab.db.ArticleDatabase
+import com.example.basiscodelab.phi.GenAIWrapper
 import com.example.basiscodelab.repository.NewsRepository
 import com.example.basiscodelab.repository.NewsResult
 import com.example.basiscodelab.ui.theme.BasisCodelabTheme
@@ -108,10 +110,13 @@ class MainActivity : ComponentActivity() {
     ) {
         var fetchedNewsState: List<Article> by rememberSaveable { mutableStateOf(emptyList()) }
 
+
         Surface(modifier) {
             if (fetchedNewsState.isEmpty()) {
                 OnboardingScreen(onContinueClicked = {
-                    Log.d("DBG", "")
+                    Log.d("DBG", "Contibue button clicked , fetching news data")
+
+
                     fetchNewsData { news ->
                         fetchedNewsState = news
                     }
@@ -132,12 +137,23 @@ class MainActivity : ComponentActivity() {
         articles: List<Article>
     ) {
         val summarizedArticle by viewModel.summarizedArticle.observeAsState()
+
+       var startTime by remember{ mutableStateOf<Long?> (null)}
+       var duration by remember { mutableStateOf<Long?>(null)}
         Log.d("BasisCodelab", "SummarizeViewScreen: $summarizedArticle")
 
-
         LaunchedEffect(Unit) {
+           startTime= System.currentTimeMillis()
             viewModel.triggersummaryofarticles(articles)
             Log.d("BasisCodelab", "triggering summary of articles")
+
+       }
+       LaunchedEffect(summarizedArticle) {
+            summarizedArticle?.let {
+                duration = System.currentTimeMillis() - startTime!!
+                Log.d("BasisCodelab", "Time taken for the model to give response: $duration ms")
+            }
+
         }
 
         LazyColumn(
