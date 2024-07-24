@@ -108,7 +108,7 @@ Java_com_example_basiscodelab_phi_GenAIWrapper_run(JNIEnv *env, jobject thiz, jl
     check_result(OgaCreateGeneratorParams(model, &generator_params));
     GeneratorParamsPtr gp_cleanup{generator_params, OgaDestroyGeneratorParams};
 
-    check_result(OgaGeneratorParamsSetSearchNumber(generator_params, "max_length", 500));
+    check_result(OgaGeneratorParamsSetSearchNumber(generator_params, "max_length", 1000));
     check_result(OgaGeneratorParamsSetInputSequences(generator_params, sequences));
 
     __android_log_print(ANDROID_LOG_DEBUG, "native", "starting token generation");

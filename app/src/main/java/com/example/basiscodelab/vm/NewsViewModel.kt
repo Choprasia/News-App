@@ -52,17 +52,35 @@ class NewsViewModel constructor(val repository: NewsRepository, context: Context
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 genAIWrapper?.let { wrapper ->
-                    val titles= articles.take(10).joinToString("\n") { article ->
+                    val titles= articles.take(5).joinToString("\n") { article ->
                         " - ${article.title}"
                     }
 
-                    val prompt = """You are a news paper editor, you will be given article titles, please read the content of titles, and group them into following categories : "Tech, Sports, politics, Others".
-                        Here are the article titles:
-                        $titles
-                        Output format:
-                        ``` <Category 1> : <Article Title 1>, <Article Title 2>...
-                            <Summary> : <``` 
-                        """
+                    val prompt = """
+You are an advanced AI model specializing in text categorization and summarization. I have a set of article titles, and I need you to perform two tasks:
+- Categorize each article title into appropriate categories.
+- Generate a summary for each category based on the categorized article titles.
+Here are the new article titles:
+$titles
+                    
+Instructions:
+
+1. Categorization:
+
+Review each article title and determine the most suitable category for it. Common categories might include Technology, Health, Sports, Politics, Business, Entertainment, Others.
+Group the titles under their respective categories. 
+
+2. Summarization:
+
+Once the titles are categorized, generate a concise summary for each category.
+The summary should capture the main themes and key points of the articles in that category, providing a brief news digest.
+
+Output format:
+
+Category: [Category Name]
+    Summary: [Generated Summary]
+
+ """
                     Log.d(TAG, "Prompt length:${prompt.length}")
 
                     wrapper.run(prompt)
