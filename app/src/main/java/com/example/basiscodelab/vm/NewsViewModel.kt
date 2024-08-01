@@ -67,7 +67,7 @@ Instructions:
 
 1. Categorization:
 
-Review each article title and determine the most suitable category for it. Common categories might include Technology, Health, Sports, Politics, Business, Entertainment, Others.
+Review each article title and determine the most suitable category for it. The categories are:Sports, Politics, Technology, Business, Entertainment and Others.
 Group the titles under their respective categories. 
 
 2. Summarization:

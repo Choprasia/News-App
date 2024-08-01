@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -59,7 +58,6 @@ import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
 import com.example.basiscodelab.data.Article
 import com.example.basiscodelab.db.ArticleDatabase
-import com.example.basiscodelab.phi.GenAIWrapper
 import com.example.basiscodelab.repository.NewsRepository
 import com.example.basiscodelab.repository.NewsResult
 import com.example.basiscodelab.ui.theme.BasisCodelabTheme
@@ -67,7 +65,6 @@ import com.example.basiscodelab.vm.NewsViewModel
 import com.example.basiscodelab.vm.NewsViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.internal.wait
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -80,11 +77,9 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val TAG = "basiscodelab.MainActivity"
     }
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         val db = ArticleDatabase(this)
         val repository = NewsRepository(db)
         val newsViewModelFactory = NewsViewModelFactory(this, repository)
@@ -102,7 +97,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @Composable
     fun MyApp(
@@ -125,87 +119,26 @@ class MainActivity : ComponentActivity() {
                 Nav(fetchedNewsState)
 
             }
-
         }
     }
-
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun SummarizeViewScreen(
-        navController: NavController,
-        viewModel: NewsViewModel,
-        articles: List<Article>
+    fun OnboardingScreen(
+        onContinueClicked: () -> Unit,
+        modifier: Modifier = Modifier
     ) {
-        val summarizedArticle by viewModel.summarizedArticle.observeAsState()
-
-       var startTime by remember{ mutableStateOf<Long?> (null)}
-       var duration by remember { mutableStateOf<Long?>(null)}
-        Log.d("BasisCodelab", "SummarizeViewScreen: $summarizedArticle")
-
-        LaunchedEffect(Unit) {
-           startTime= System.currentTimeMillis()
-            viewModel.triggersummaryofarticles(articles)
-            Log.d("BasisCodelab", "triggering summary of articles")
-
-       }
-       LaunchedEffect(summarizedArticle) {
-            summarizedArticle?.let {
-                duration = System.currentTimeMillis() - startTime!!
-                Log.d("BasisCodelab", "Time taken for the model to give response: $duration ms")
-            }
-
-        }
-
-        LazyColumn(
+        Column(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            item {
-                TopAppBar(
-                    title = { Text(text = "") },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "")
-
-                        }
-                    }
-
-                )
+            Text("Welcome to Daily News!")
+            Button(
+                modifier = Modifier.padding(vertical = 24.dp), onClick = onContinueClicked
+            ) {
+                Text("Continue")
             }
-            item {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-
-                ) {
-                    Text(
-
-                        text = "Summary of the day",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Box(
-                        modifier=Modifier.padding(16.dp)
-                    ){
-                    if (summarizedArticle != null) {
-                        Text(
-                            text = summarizedArticle!!,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    } else {
-                        Text(
-                            text = "Summarizing...",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-
-            }}
         }
     }
-
-
     private fun fetchNewsData(fetchedNews: (List<Article>) -> Unit) {
         newsViewModel.getNews("in", 1)
         newsViewModel.newsData.observe(this) {
@@ -226,7 +159,6 @@ class MainActivity : ComponentActivity() {
 
         }
     }
-
     @Composable
     fun Nav(list: List<Article>, viewModel: NewsViewModel = newsViewModel) {
         val navController = rememberNavController()
@@ -253,125 +185,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun ArticleDetailedView(
-        modifier: Modifier = Modifier,
-        navController: NavController,
-        articleTitle: String?,
-
-        ) {
-        val articleState by newsViewModel.singleArticle.observeAsState()
-        LaunchedEffect(Unit) {
-            newsViewModel.getSingleArticle(articleTitle ?: "")
-        }
-
-        LaunchedEffect(articleState) {
-            Log.i("BasisCodelab", "Article state updated: $articleState")
-            if (articleState != null) {
-                withContext(Dispatchers.IO) {
-                    Log.i("BasisCodelab", "Article processed:${articleState?.title}")
-                }
-            }
-        }
-        articleState?.let { article ->
-            LazyColumn(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                item {
-                    TopAppBar(
-                        title = { Text(text = "") }, navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "")
-
-                            }
-                        }, modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    article.urlToImage?.let {
-                        Log.d("DBG", "Image URL: $it")
-                        Image(
-                            painter = rememberImagePainter(data = it),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .size(200.dp)
-                                .padding(8.dp)
-                        )
-                    }
-                    Text(
-                        text = article.title, style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier
-                            .padding(vertical = 8.dp)
-                            .fillMaxWidth()
-                    )
-
-
-                    Text(
-                        text = article.description ?: "",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier
-                            .padding(vertical = 8.dp)
-                            .fillMaxWidth()
-                    )
-                    Log.d("DBG", "Article content: ${article.description}")
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    article.url?.let {
-                        Text(
-
-                            text = "Read More: ",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                            Text(
-                                text = "$it",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = MaterialTheme.colorScheme.primary
-                                ),
-                                modifier = Modifier
-                                    .padding(vertical = 8.dp)
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
-                                        startActivity(intent, null)
-                                    }
-                        )
-                    }
-                }
-            }
-        } ?: run {
-            Text(text = "Loading")
-        }
-    }
-
-    @Composable
-    fun OnboardingScreen(
-        onContinueClicked: () -> Unit,
-        modifier: Modifier = Modifier
-    ) {
-        Column(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Welcome to Daily News!")
-            Button(
-                modifier = Modifier.padding(vertical = 24.dp), onClick = onContinueClicked
-            ) {
-                Text("Continue")
-            }
-        }
-    }
-
     @Composable
     fun NewsList(
         list: List<Article>,
@@ -393,8 +206,7 @@ class MainActivity : ComponentActivity() {
                 verticalAlignment = Alignment.Bottom
             ) {
                 Button(
-                    onClick = { onSummarizeClick() },
-                    modifier = Modifier.padding(8.dp)
+                    onClick = { onSummarizeClick() }, modifier = Modifier.padding(8.dp)
                 ) {
                     Text("Summarize")
                 }
@@ -410,14 +222,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
     fun convertTimestampToDate(publisedAt: String): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
         val date = sdf.parse(publisedAt)
         val outputsdf = SimpleDateFormat("EEEE MMMM dd,yyyy", Locale.getDefault())
         return outputsdf.format(date)
     }
-
     fun getDaysDifference(publisedAt: String): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
         val date = sdf.parse(publisedAt)
@@ -432,7 +242,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
     @Composable
     private fun ArticleView(
 
@@ -460,7 +269,8 @@ class MainActivity : ComponentActivity() {
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = title, style = MaterialTheme.typography.headlineSmall.copy(
+                            text = title,
+                            style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.ExtraBold, fontSize = 16.sp
 
                             ),
@@ -494,6 +304,170 @@ class MainActivity : ComponentActivity() {
 
                 }
 
+            }
+        }
+    }
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ArticleDetailedView(
+        modifier: Modifier = Modifier,
+        navController: NavController,
+        articleTitle: String?,
+
+        ) {
+        val articleState by newsViewModel.singleArticle.observeAsState()
+        LaunchedEffect(Unit) {
+            newsViewModel.getSingleArticle(articleTitle ?: "")
+        }
+
+        LaunchedEffect(articleState) {
+            Log.i("BasisCodelab", "Article state updated: $articleState")
+            if (articleState != null) {
+                withContext(Dispatchers.IO) {
+                    Log.i("BasisCodelab", "Article processed:${articleState?.title}")
+                }
+            }
+        }
+        articleState?.let { article ->
+            LazyColumn(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                item {
+                    TopAppBar(title = { Text(text = "") }, navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "")
+
+                        }
+                    }, modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    article.urlToImage?.let {
+                        Log.d("DBG", "Image URL: $it")
+                        Image(
+                            painter = rememberImagePainter(data = it),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .size(200.dp)
+                                .padding(8.dp)
+                        )
+                    }
+                    Text(
+                        text = article.title, style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ), modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .fillMaxWidth()
+                    )
+
+
+                    Text(
+                        text = article.description ?: "",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .fillMaxWidth()
+                    )
+                    Log.d("DBG", "Article content: ${article.description}")
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    article.url?.let {
+                        Text(
+
+                            text = "Read More: ", style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Text(text = "$it",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .padding(vertical = 8.dp)
+                                .fillMaxWidth()
+                                .clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
+                                    startActivity(intent, null)
+                                })
+                    }
+                }
+            }
+        } ?: run {
+            Text(text = "Loading")
+        }
+    }
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun SummarizeViewScreen(
+        navController: NavController, viewModel: NewsViewModel, articles: List<Article>
+    ) {
+        val summarizedArticle by viewModel.summarizedArticle.observeAsState()
+
+        var startTime by remember { mutableStateOf<Long?>(null) }
+        var duration by remember { mutableStateOf<Long?>(null) }
+        Log.d("BasisCodelab", "SummarizeViewScreen: $summarizedArticle")
+
+        LaunchedEffect(Unit) {
+            startTime = System.currentTimeMillis()
+            viewModel.triggersummaryofarticles(articles)
+            Log.d("BasisCodelab", "triggering summary of articles")
+
+        }
+        LaunchedEffect(summarizedArticle) {
+            summarizedArticle?.let {
+                duration = System.currentTimeMillis() - startTime!!
+                Log.d("BasisCodelab", "Time taken for the model to give response: $duration ms")
+            }
+
+        }
+
+        LazyColumn(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item {
+                TopAppBar(title = { Text(text = "") }, navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "")
+
+                    }
+                }
+
+                )
+            }
+            item {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+
+                ) {
+                    Text(
+
+                        text = "Summary of the day",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        if (summarizedArticle != null) {
+                            Text(
+                                text = summarizedArticle!!,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        } else {
+                            Text(
+                                text = "Summarizing...", style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
+                }
             }
         }
     }
